@@ -26,11 +26,40 @@ const client = new MongoClient(uri, {
 });
 async function run() {
   try {
-    // // Connect the client to the server	(optional starting in v4.7)
-    // await client.connect();
-    // // Send a ping to confirm a successful connection
-    // await client.db("admin").command({ ping: 1 });
-    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    const classCollection = client.db("edumi").collection("allClasses");
+
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+      res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: true,
+          sameSite: "none",
+        })
+        .send({ success: true });
+    });
+    app.post("/logout", async (req, res) => {
+      res
+        .clearCookie("token", {
+          httpOnly: true,
+          secure: true,
+          sameSite: "none",
+        })
+        .send({ success: true });
+    });
+    // all classes apis
+    app.get("/allclasses", async (req, res) => {
+      const result = await classCollection.find().toArray();
+      res.send(result);
+    });
+    app.post("/allclasses", (req, res) => {
+      const data = req.body;
+      const result = classCollection.insertMany(data);
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
