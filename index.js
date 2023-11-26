@@ -134,6 +134,13 @@ async function run() {
       const isAlreadyEnrolled = await enrolledClassesCollection.findOne(query);
       res.send(isAlreadyEnrolled);
     });
+
+    // Get user role
+    app.get("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await usersCollection.findOne({ email });
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
