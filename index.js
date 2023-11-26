@@ -27,6 +27,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     const classCollection = client.db("edumi").collection("allClasses");
+    const usersCollection = client.db("edumi").collection("users");
 
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -49,6 +50,37 @@ async function run() {
           sameSite: "none",
         })
         .send({ success: true });
+    });
+    // save users and update role
+    app.put("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const user = req.body;
+      const query = { email: email };
+      const options = { upsert: true };
+      console.log(user);
+      const isExist = await usersCollection.findOne(query);
+      if (isExist) {
+        if (user?.status === "Requested") {
+          const result = await usersCollection.updateOne(
+            query,
+            {
+              $set: user,
+            },
+            options
+          );
+          return res.send(result);
+        } else {
+          return res.send(isExist);
+        }
+      }
+      const result = await usersCollection.updateOne(
+        query,
+        {
+          $set: user,
+        },
+        options
+      );
+      res.send(result);
     });
     // all classes apis
     app.get("/allclasses", async (req, res) => {
