@@ -5,6 +5,10 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const port = process.env.PORT || 3500;
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
+// const stripe = require("stripe")(
+//   `Authorization: Bearer ${process.env.PAYMENT_SECRET_KEY}`
+// );
 const app = express();
 app.use(
   cors({
@@ -28,6 +32,9 @@ async function run() {
   try {
     const classCollection = client.db("edumi").collection("allClasses");
     const usersCollection = client.db("edumi").collection("users");
+    const enrolledClassesCollection = client
+      .db("edumi")
+      .collection("enrolledClasses");
 
     app.post("/jwt", async (req, res) => {
       const user = req.body;
@@ -57,10 +64,9 @@ async function run() {
       const user = req.body;
       const query = { email: email };
       const options = { upsert: true };
-      console.log(user);
       const isExist = await usersCollection.findOne(query);
       if (isExist) {
-        if (user?.status === "Requested") {
+        if (user?.status === "requested") {
           const result = await usersCollection.updateOne(
             query,
             {
@@ -97,6 +103,26 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await classCollection.findOne(query);
+      res.send(result);
+    });
+
+    // create-payment-intent
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      if (!price || amount < 1) return;
+      const { client_secret } = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({ clientSecret: client_secret });
+    });
+
+    // Save booking info in booking collection
+    app.post("/enrolledclasses", async (req, res) => {
+      const booking = req.body;
+      const result = await enrolledClassesCollection.insertOne(booking);
       res.send(result);
     });
   } finally {
