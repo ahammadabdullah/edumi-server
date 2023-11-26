@@ -119,11 +119,20 @@ async function run() {
       res.send({ clientSecret: client_secret });
     });
 
-    // Save booking info in booking collection
+    // Save classInfo in enrolledClassesCollection
     app.post("/enrolledclasses", async (req, res) => {
       const booking = req.body;
       const result = await enrolledClassesCollection.insertOne(booking);
       res.send(result);
+    });
+
+    // check isAlreadyEnrolled
+
+    app.get("/enrolledclasses/:id", async (req, res) => {
+      const { id } = req.params;
+      const query = { classId: id };
+      const isAlreadyEnrolled = await enrolledClassesCollection.findOne(query);
+      res.send(isAlreadyEnrolled);
     });
   } finally {
     // Ensures that the client will close when you finish/error
