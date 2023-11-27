@@ -34,6 +34,7 @@ async function run() {
     const classCollection = client.db("edumi").collection("allClasses");
     const usersCollection = client.db("edumi").collection("users");
     const terCollection = client.db("edumi").collection("ter");
+    const teachersCollection = client.db("edumi").collection("teachers");
     const enrolledClassesCollection = client
       .db("edumi")
       .collection("enrolledClasses");
@@ -159,6 +160,12 @@ async function run() {
     app.post("/ter", async (req, res) => {
       const report = req.body;
       const result = await terCollection.insertOne(report);
+      res.send(result);
+    });
+    //teacher request api
+    app.post("/teachonedumi", async (req, res) => {
+      const teachersDetails = req.body;
+      const result = await teachersCollection.insertOne(teachersDetails);
       res.send(result);
     });
   } finally {
