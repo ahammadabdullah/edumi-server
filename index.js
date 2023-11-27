@@ -218,6 +218,23 @@ async function run() {
       const result = await teachersCollection.deleteOne(query);
       res.send(result);
     });
+    //get all users
+    app.get("/allusers", async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+    // make admin
+    app.put("/make-admin/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const updatedRole = {
+        $set: {
+          role: "Admin",
+        },
+      };
+      const result = await usersCollection.updateOne(query, updatedRole);
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
