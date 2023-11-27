@@ -168,6 +168,56 @@ async function run() {
       const result = await teachersCollection.insertOne(teachersDetails);
       res.send(result);
     });
+    // check if the teacher already request or already a teacher
+    app.get("/teacher/:email", async (req, res) => {
+      const email = req.params.email;
+      console.log(email);
+      const query = { email };
+      const result = await teachersCollection.findOne(query);
+      res.send(result);
+    });
+    //get pending teacher requests
+    app.get("/teacherrequests", async (req, res) => {
+      const query = {
+        status: "pending",
+      };
+      const result = await teachersCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // approve teacher request
+    app.put("/teacherrequests/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const updatedDoc1 = {
+        $set: {
+          status: "approved",
+        },
+      };
+      const updatedDoc2 = {
+        $set: {
+          role: "Teacher",
+        },
+      };
+      const updateTeacherCollection = await teachersCollection.updateOne(
+        query,
+        updatedDoc1
+      );
+      console.log(updateTeacherCollection);
+      const updateUserCollection = await usersCollection.updateOne(
+        query,
+        updatedDoc2
+      );
+      console.log(updateUserCollection);
+      res.send("updated");
+    });
+    //decline teacher request
+    app.delete("/teacherrequests/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await teachersCollection.deleteOne(query);
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
