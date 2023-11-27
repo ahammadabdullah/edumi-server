@@ -130,7 +130,9 @@ async function run() {
 
     app.get("/enrolledclasses/:id", async (req, res) => {
       const { id } = req.params;
-      const query = { classId: id };
+      const email = req.query.email;
+      console.log(email);
+      const query = { classId: id, studentEmail: email };
       const isAlreadyEnrolled = await enrolledClassesCollection.findOne(query);
       res.send(isAlreadyEnrolled);
     });
@@ -139,6 +141,16 @@ async function run() {
     app.get("/user/:email", async (req, res) => {
       const email = req.params.email;
       const result = await usersCollection.findOne({ email });
+      res.send(result);
+    });
+    // get enrolled classes
+    app.get("/myenrolledclasses/:email", async (req, res) => {
+      const email = req.params.email;
+      const result = await enrolledClassesCollection
+        .find({
+          studentEmail: email,
+        })
+        .toArray();
       res.send(result);
     });
   } finally {
