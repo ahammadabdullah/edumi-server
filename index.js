@@ -30,8 +30,10 @@ const client = new MongoClient(uri, {
 });
 async function run() {
   try {
+    // collection here
     const classCollection = client.db("edumi").collection("allClasses");
     const usersCollection = client.db("edumi").collection("users");
+    const terCollection = client.db("edumi").collection("ter");
     const enrolledClassesCollection = client
       .db("edumi")
       .collection("enrolledClasses");
@@ -151,6 +153,12 @@ async function run() {
           studentEmail: email,
         })
         .toArray();
+      res.send(result);
+    });
+    // post ter report
+    app.post("/ter", async (req, res) => {
+      const report = req.body;
+      const result = await terCollection.insertOne(report);
       res.send(result);
     });
   } finally {
