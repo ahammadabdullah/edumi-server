@@ -92,8 +92,14 @@ async function run() {
       );
       res.send(result);
     });
-    // all classes apis
+    // get all classes for user apis
     app.get("/allclasses", async (req, res) => {
+      const query = { status: "approved" };
+      const result = await classCollection.find(query).toArray();
+      res.send(result);
+    });
+    // get all classes for admin apis
+    app.get("/admin/allclasses", async (req, res) => {
       const result = await classCollection.find().toArray();
       res.send(result);
     });
@@ -173,6 +179,13 @@ async function run() {
     app.post("/ter", async (req, res) => {
       const report = req.body;
       const result = await terCollection.insertOne(report);
+      res.send(result);
+    });
+    // get ter report
+    app.get("/ter/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { classId: id };
+      const result = await terCollection.find(query).toArray();
       res.send(result);
     });
     //teacher request api
