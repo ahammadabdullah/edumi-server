@@ -124,8 +124,19 @@ async function run() {
 
     // Save classInfo in enrolledClassesCollection
     app.post("/enrolledclasses", async (req, res) => {
-      const booking = req.body;
-      const result = await enrolledClassesCollection.insertOne(booking);
+      const info = req.body;
+      const filter = { _id: new ObjectId(info.classId) };
+      const option = { upsert: true };
+      const updatedDoc = {
+        $inc: { totalEnrollment: 1 },
+      };
+      const result = await enrolledClassesCollection.insertOne(info);
+      const update = await classCollection.updateOne(
+        filter,
+        updatedDoc,
+        option
+      );
+      console.log(update);
       res.send(result);
     });
 
