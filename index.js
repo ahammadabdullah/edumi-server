@@ -313,6 +313,28 @@ async function run() {
       const result = await assignmentsCollection.find(query).toArray();
       res.send(result);
     });
+    app.put("/admin/allclasses/approve/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          status: "approved",
+        },
+      };
+      const result = await classCollection.updateOne(query, updatedDoc);
+      res.send(result);
+    });
+    app.put("/admin/allclasses/reject/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          status: "rejected",
+        },
+      };
+      const result = await classCollection.updateOne(query, updatedDoc);
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
