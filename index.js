@@ -255,6 +255,25 @@ async function run() {
       const result = await classCollection.deleteOne(query);
       res.send(result);
     });
+    // update my class
+    app.put("/myclasses/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const data = req.body;
+      console.log(data);
+      const updatedDoc = {
+        $set: {
+          title: data.title,
+          price: data.price,
+          description: data.description,
+          image: data.image,
+          status: "pending",
+        },
+      };
+      const result = await classCollection.updateOne(query, updatedDoc);
+      res.send(result);
+      console.log(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
