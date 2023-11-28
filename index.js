@@ -35,6 +35,7 @@ async function run() {
     const usersCollection = client.db("edumi").collection("users");
     const terCollection = client.db("edumi").collection("ter");
     const teachersCollection = client.db("edumi").collection("teachers");
+    const assignmentsCollection = client.db("edumi").collection("assignments");
     const enrolledClassesCollection = client
       .db("edumi")
       .collection("enrolledClasses");
@@ -96,11 +97,12 @@ async function run() {
       const result = await classCollection.find().toArray();
       res.send(result);
     });
-    app.post("/allclasses", (req, res) => {
-      const data = req.body;
-      const result = classCollection.insertMany(data);
-      res.send(result);
-    });
+    // //add class
+    // app.post("/allclasses", (req, res) => {
+    //   const data = req.body;
+    //   const result = classCollection.insertMany(data);
+    //   res.send(result);
+    // });
     // single classes apis
     app.get("/allclasses/:id", async (req, res) => {
       const id = req.params.id;
@@ -284,6 +286,19 @@ async function run() {
       const result = await classCollection.updateOne(query, updatedDoc);
       res.send(result);
       console.log(result);
+    });
+    //create assignment
+    app.post("/assignments", async (req, res) => {
+      const data = req.body;
+      const result = await assignmentsCollection.insertOne(data);
+      res.send(result);
+    });
+    // get assignments
+    app.get("/assignments/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { classId: id };
+      const result = await assignmentsCollection.find(query).toArray();
+      res.send(result);
     });
   } finally {
     // Ensures that the client will close when you finish/error
