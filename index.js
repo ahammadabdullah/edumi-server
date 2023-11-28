@@ -235,6 +235,26 @@ async function run() {
       const result = await usersCollection.updateOne(query, updatedRole);
       res.send(result);
     });
+    // add class api
+    app.post("/addclass", async (req, res) => {
+      const data = req.body;
+      const result = await classCollection.insertOne(data);
+      res.send(result);
+    });
+    //get my classs api
+    app.get("/myclasses/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await classCollection.find(query).toArray();
+      res.send(result);
+    });
+    //delete my class
+    app.delete("/myclasses/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await classCollection.deleteOne(query);
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
