@@ -36,6 +36,10 @@ async function run() {
     const terCollection = client.db("edumi").collection("ter");
     const teachersCollection = client.db("edumi").collection("teachers");
     const assignmentsCollection = client.db("edumi").collection("assignments");
+    const submittedAssignmentCollection = client
+      .db("edumi")
+      .collection("submittedAssignment");
+
     const enrolledClassesCollection = client
       .db("edumi")
       .collection("enrolledClasses");
@@ -313,6 +317,7 @@ async function run() {
       const result = await assignmentsCollection.find(query).toArray();
       res.send(result);
     });
+    // approve class by admin
     app.put("/admin/allclasses/approve/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -324,6 +329,7 @@ async function run() {
       const result = await classCollection.updateOne(query, updatedDoc);
       res.send(result);
     });
+    // reject class by admin
     app.put("/admin/allclasses/reject/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
@@ -333,6 +339,26 @@ async function run() {
         },
       };
       const result = await classCollection.updateOne(query, updatedDoc);
+      res.send(result);
+    });
+    // get student class's assignment
+    app.get("/students/assignments/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { classId: id };
+      const result = await assignmentsCollection.find(query).toArray();
+      res.send(result);
+    });
+    // submit assignments by student
+    app.post("/student/submitAssignment", async (req, res) => {
+      const info = req.body;
+      const result = await submittedAssignmentCollection.insertOne(info);
+      res.send(result);
+    });
+    // get all the submitted assignments by classId
+    app.get("/submittedAssignments/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { classId: id };
+      const result = await submittedAssignmentCollection.find(query).toArray();
       res.send(result);
     });
   } finally {
