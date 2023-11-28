@@ -102,6 +102,15 @@ async function run() {
       const result = await classCollection.find(query).toArray();
       res.send(result);
     });
+    //get featured class / all classes sorted by enrollment count
+    app.get("/allclasses/sorted", async (req, res) => {
+      const query = { status: "approved" };
+      const result = await classCollection
+        .find(query)
+        .sort({ totalEnrollment: -1 })
+        .toArray();
+      res.send(result);
+    });
     // get all classes for admin apis
     app.get("/admin/allclasses", async (req, res) => {
       const result = await classCollection.find().toArray();
