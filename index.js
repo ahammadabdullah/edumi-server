@@ -28,6 +28,23 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+
+// verify token
+const verifyToken = async (req, res, next) => {
+  const token = req.cookies?.token;
+  console.log(token);
+  if (!token) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if (err) {
+      console.log(err);
+      return res.status(401).send({ message: "unauthorized access" });
+    }
+    req.user = decoded;
+    next();
+  });
+};
 async function run() {
   try {
     // collection here
@@ -44,6 +61,27 @@ async function run() {
       .db("edumi")
       .collection("enrolledClasses");
 
+    //verify admin
+    const verifyAdmin = async (req, res, next) => {
+      const user = req.user;
+      console.log("user from verify admin", user);
+      const query = { email: user?.email };
+      const result = await usersCollection.findOne(query);
+      if (!result || result?.role !== "Admin")
+        return res.status(401).send({ message: "unauthorized access" });
+      next();
+    };
+    // verifyTeacher;
+    const verifyTeacher = async (req, res, next) => {
+      const user = req.user;
+      console.log("user from verify admin", user);
+      const query = { email: user?.email };
+      const result = await usersCollection.findOne(query);
+      if (!result || result?.role !== "Teacher")
+        return res.status(401).send({ message: "unauthorized access" });
+      console.log("teacher");
+      next();
+    };
     app.post("/jwt", async (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
@@ -112,9 +150,16 @@ async function run() {
       res.send(result);
     });
     // get all classes for admin apis
-    app.get("/admin/allclasses", async (req, res) => {
+    app.get("/admin/allclasses", verifyToken, verifyAdmin, async (req, res) => {
       const result = await classCollection.find().toArray();
       res.send(result);
+    });
+    // get users role
+    app.get("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email };
+      const result = await usersCollection.findOne(query);
+      res.send(result.role);
     });
     // //add class
     // app.post("/allclasses", (req, res) => {
@@ -123,7 +168,7 @@ async function run() {
     //   res.send(result);
     // });
     // single classes apis
-    app.get("/allclasses/:id", async (req, res) => {
+    app.get("/allclasses/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await classCollection.findOne(query);
@@ -131,7 +176,7 @@ async function run() {
     });
 
     // create-payment-intent
-    app.post("/create-payment-intent", async (req, res) => {
+    app.post("/create-payment-intent", verifyToken, async (req, res) => {
       const { price } = req.body;
       const amount = parseInt(price * 100);
       if (!price || amount < 1) return;
@@ -144,7 +189,7 @@ async function run() {
     });
 
     // Save classInfo in enrolledClassesCollection
-    app.post("/enrolledclasses", async (req, res) => {
+    app.post("/enrolledclasses", verifyToken, async (req, res) => {
       const info = req.body;
       const filter = { _id: new ObjectId(info.classId) };
       const option = { upsert: true };
@@ -179,7 +224,7 @@ async function run() {
       res.send(result);
     });
     // get enrolled classes
-    app.get("/myenrolledclasses/:email", async (req, res) => {
+    app.get("/myenrolledclasses/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const result = await enrolledClassesCollection
         .find({
@@ -189,26 +234,26 @@ async function run() {
       res.send(result);
     });
     // post ter report
-    app.post("/ter", async (req, res) => {
+    app.post("/ter", verifyToken, async (req, res) => {
       const report = req.body;
       const result = await terCollection.insertOne(report);
       res.send(result);
     });
     // get ter report
-    app.get("/ter/:id", async (req, res) => {
+    app.get("/ter/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const query = { classId: id };
       const result = await terCollection.find(query).toArray();
       res.send(result);
     });
     //teacher request api
-    app.post("/teachonedumi", async (req, res) => {
+    app.post("/teachonedumi", verifyToken, async (req, res) => {
       const teachersDetails = req.body;
       const result = await teachersCollection.insertOne(teachersDetails);
       res.send(result);
     });
     // check if the teacher already request or already a teacher
-    app.get("/teacher/:email", async (req, res) => {
+    app.get("/teacher/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       console.log(email);
       const query = { email };
@@ -216,7 +261,7 @@ async function run() {
       res.send(result);
     });
     //get pending teacher requests
-    app.get("/teacherrequests", async (req, res) => {
+    app.get("/teacherrequests", verifyToken, verifyAdmin, async (req, res) => {
       const query = {
         status: "pending",
       };
@@ -225,77 +270,102 @@ async function run() {
     });
 
     // approve teacher request
-    app.put("/teacherrequests/:email", async (req, res) => {
-      const email = req.params.email;
-      const query = { email: email };
-      const updatedDoc1 = {
-        $set: {
-          status: "approved",
-        },
-      };
-      const updatedDoc2 = {
-        $set: {
-          role: "Teacher",
-        },
-      };
-      const updateTeacherCollection = await teachersCollection.updateOne(
-        query,
-        updatedDoc1
-      );
-      console.log(updateTeacherCollection);
-      const updateUserCollection = await usersCollection.updateOne(
-        query,
-        updatedDoc2
-      );
-      console.log(updateUserCollection);
-      res.send("updated");
-    });
+    app.put(
+      "/teacherrequests/:email",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const email = req.params.email;
+        const query = { email: email };
+        const updatedDoc1 = {
+          $set: {
+            status: "approved",
+          },
+        };
+        const updatedDoc2 = {
+          $set: {
+            role: "Teacher",
+          },
+        };
+        const updateTeacherCollection = await teachersCollection.updateOne(
+          query,
+          updatedDoc1
+        );
+        console.log(updateTeacherCollection);
+        const updateUserCollection = await usersCollection.updateOne(
+          query,
+          updatedDoc2
+        );
+        console.log(updateUserCollection);
+        res.send("updated");
+      }
+    );
     //decline teacher request
-    app.delete("/teacherrequests/:email", async (req, res) => {
-      const email = req.params.email;
-      const query = { email: email };
-      const result = await teachersCollection.deleteOne(query);
-      res.send(result);
-    });
+    app.delete(
+      "/teacherrequests/:email",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const email = req.params.email;
+        const query = { email: email };
+        const result = await teachersCollection.deleteOne(query);
+        res.send(result);
+      }
+    );
     //get all users
-    app.get("/allusers", async (req, res) => {
+    app.get("/allusers", verifyToken, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
     // make admin
-    app.put("/make-admin/:email", async (req, res) => {
-      const email = req.params.email;
-      const query = { email: email };
-      const updatedRole = {
-        $set: {
-          role: "Admin",
-        },
-      };
-      const result = await usersCollection.updateOne(query, updatedRole);
-      res.send(result);
-    });
+    app.put(
+      "/make-admin/:email",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const email = req.params.email;
+        const query = { email: email };
+        const updatedRole = {
+          $set: {
+            role: "Admin",
+          },
+        };
+        const result = await usersCollection.updateOne(query, updatedRole);
+        res.send(result);
+      }
+    );
     // add class api
-    app.post("/addclass", async (req, res) => {
+    app.post("/addclass", verifyToken, verifyTeacher, async (req, res) => {
       const data = req.body;
       const result = await classCollection.insertOne(data);
       res.send(result);
     });
-    //get my classs api
-    app.get("/myclasses/:email", async (req, res) => {
-      const email = req.params.email;
-      const query = { email: email };
-      const result = await classCollection.find(query).toArray();
-      res.send(result);
-    });
-    //delete my class
-    app.delete("/myclasses/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await classCollection.deleteOne(query);
-      res.send(result);
-    });
+    //get my classs api teacher
+    app.get(
+      "/myclasses/:email",
+      verifyToken,
+      verifyTeacher,
+      async (req, res) => {
+        const email = req.params.email;
+        const query = { email: email };
+        const result = await classCollection.find(query).toArray();
+        res.send(result);
+      }
+    );
+    //delete my class teacher
+    app.delete(
+      "/myclasses/:id",
+      verifyToken,
+      verifyTeacher,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await classCollection.deleteOne(query);
+        res.send(result);
+      }
+    );
     // update my class
-    app.put("/myclasses/:id", async (req, res) => {
+    app.put("/myclasses/:id", verifyToken, verifyTeacher, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const data = req.body;
@@ -314,62 +384,79 @@ async function run() {
       console.log(result);
     });
     //create assignment
-    app.post("/assignments", async (req, res) => {
+    app.post("/assignments", verifyToken, verifyTeacher, async (req, res) => {
       const data = req.body;
       const result = await assignmentsCollection.insertOne(data);
       res.send(result);
     });
     // get assignments
-    app.get("/assignments/:id", async (req, res) => {
+    app.get("/assignments/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { classId: id };
       const result = await assignmentsCollection.find(query).toArray();
       res.send(result);
     });
     // approve class by admin
-    app.put("/admin/allclasses/approve/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const updatedDoc = {
-        $set: {
-          status: "approved",
-        },
-      };
-      const result = await classCollection.updateOne(query, updatedDoc);
-      res.send(result);
-    });
+    app.put(
+      "/admin/allclasses/approve/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const updatedDoc = {
+          $set: {
+            status: "approved",
+          },
+        };
+        const result = await classCollection.updateOne(query, updatedDoc);
+        res.send(result);
+      }
+    );
     // reject class by admin
-    app.put("/admin/allclasses/reject/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const updatedDoc = {
-        $set: {
-          status: "rejected",
-        },
-      };
-      const result = await classCollection.updateOne(query, updatedDoc);
-      res.send(result);
-    });
+    app.put(
+      "/admin/allclasses/reject/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const updatedDoc = {
+          $set: {
+            status: "rejected",
+          },
+        };
+        const result = await classCollection.updateOne(query, updatedDoc);
+        res.send(result);
+      }
+    );
     // get student class's assignment
-    app.get("/students/assignments/:id", async (req, res) => {
+    app.get("/students/assignments/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { classId: id };
       const result = await assignmentsCollection.find(query).toArray();
       res.send(result);
     });
     // submit assignments by student
-    app.post("/student/submitAssignment", async (req, res) => {
+    app.post("/student/submitAssignment", verifyToken, async (req, res) => {
       const info = req.body;
       const result = await submittedAssignmentCollection.insertOne(info);
       res.send(result);
     });
     // get all the submitted assignments by classId
-    app.get("/submittedAssignments/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { classId: id };
-      const result = await submittedAssignmentCollection.find(query).toArray();
-      res.send(result);
-    });
+    app.get(
+      "/submittedAssignments/:id",
+      verifyToken,
+      verifyTeacher,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { classId: id };
+        const result = await submittedAssignmentCollection
+          .find(query)
+          .toArray();
+        res.send(result);
+      }
+    );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
