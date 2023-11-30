@@ -34,7 +34,7 @@ const verifyToken = async (req, res, next) => {
   const token = req.cookies?.token;
   console.log(token);
   if (!token) {
-    return res.status(401).send({ message: "unauthorized access" });
+    return res.status(403).send({ message: " access forbidden" });
   }
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
@@ -151,7 +151,7 @@ async function run() {
     });
     // get all classes for admin apis
     app.get("/admin/allclasses", verifyToken, verifyAdmin, async (req, res) => {
-      const result = await classCollection.find().toArray();
+      const result = await classCollection.find().sort({ status: 1 }).toArray();
       res.send(result);
     });
     // get users role
@@ -223,7 +223,7 @@ async function run() {
       const result = await usersCollection.findOne({ email });
       res.send(result);
     });
-    // get enrolled classes
+    // get enrolled classes student
     app.get("/myenrolledclasses/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const result = await enrolledClassesCollection
@@ -447,7 +447,7 @@ async function run() {
     app.get(
       "/submittedAssignments/:id",
       verifyToken,
-      verifyTeacher,
+
       async (req, res) => {
         const id = req.params.id;
         const query = { classId: id };
@@ -457,6 +457,29 @@ async function run() {
         res.send(result);
       }
     );
+    // get my ordered list of students
+    app.get("/myorders/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      console.log(email);
+      const query = { studentEmail: email };
+      const result = await enrolledClassesCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    //get statistics for all public
+    app.get("/statistics", async (req, res) => {
+      const totalUser = await usersCollection.estimatedDocumentCount();
+      const totalEnrollment =
+        await enrolledClassesCollection.estimatedDocumentCount();
+      const totalClasses = await classCollection.estimatedDocumentCount();
+      const data = {
+        totalClasses,
+        totalEnrollment,
+        totalUser,
+      };
+      console.log(data);
+      res.send(data);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
