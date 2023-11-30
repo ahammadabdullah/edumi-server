@@ -32,13 +32,11 @@ const client = new MongoClient(uri, {
 // verify token
 const verifyToken = async (req, res, next) => {
   const token = req.cookies?.token;
-  console.log(token);
   if (!token) {
     return res.status(403).send({ message: " access forbidden" });
   }
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
-      console.log(err);
       return res.status(401).send({ message: "unauthorized access" });
     }
     req.user = decoded;
@@ -64,7 +62,6 @@ async function run() {
     //verify admin
     const verifyAdmin = async (req, res, next) => {
       const user = req.user;
-      console.log("user from verify admin", user);
       const query = { email: user?.email };
       const result = await usersCollection.findOne(query);
       if (!result || result?.role !== "Admin")
@@ -74,12 +71,10 @@ async function run() {
     // verifyTeacher;
     const verifyTeacher = async (req, res, next) => {
       const user = req.user;
-      console.log("user from verify admin", user);
       const query = { email: user?.email };
       const result = await usersCollection.findOne(query);
       if (!result || result?.role !== "Teacher")
         return res.status(401).send({ message: "unauthorized access" });
-      console.log("teacher");
       next();
     };
     app.post("/jwt", async (req, res) => {
@@ -136,9 +131,17 @@ async function run() {
     });
     // get all classes for user apis
     app.get("/allclasses", async (req, res) => {
+      const pageNumber = parseInt(req.query.page);
+      const perPage = 10;
+      const skip = pageNumber * perPage;
       const query = { status: "approved" };
-      const result = await classCollection.find(query).toArray();
-      res.send(result);
+      const result = await classCollection
+        .find(query)
+        .skip(skip)
+        .limit(perPage)
+        .toArray();
+      const classCount = await classCollection.estimatedDocumentCount(query);
+      res.send({ result, classCount });
     });
     //get featured class / all classes sorted by enrollment count
     app.get("/allclasses/sorted", async (req, res) => {
@@ -151,7 +154,12 @@ async function run() {
     });
     // get all classes for admin apis
     app.get("/admin/allclasses", verifyToken, verifyAdmin, async (req, res) => {
-      const result = await classCollection.find().sort({ status: 1 }).toArray();
+      // const result = await classCollection.find().sort({ status: 1 }).toArray();
+      const result = await classCollection.find().toArray();
+      const customSortOrder = { pending: 1, approved: 2, rejected: 3 };
+      result.sort((a, b) => {
+        return customSortOrder[a.status] - customSortOrder[b.status];
+      });
       res.send(result);
     });
     // get users role
@@ -166,7 +174,8 @@ async function run() {
     //   const data = req.body;
     //   const result = classCollection.insertMany(data);
     //   res.send(result);
-    // });
+    // });  const customSortOrder = { 'pending': 1, 'approved': 2, 'rejected': 3 };
+
     // single classes apis
     app.get("/allclasses/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
@@ -202,7 +211,6 @@ async function run() {
         updatedDoc,
         option
       );
-      console.log(update);
       res.send(result);
     });
 
@@ -211,7 +219,6 @@ async function run() {
     app.get("/enrolledclasses/:id", async (req, res) => {
       const { id } = req.params;
       const email = req.query.email;
-      console.log(email);
       const query = { classId: id, studentEmail: email };
       const isAlreadyEnrolled = await enrolledClassesCollection.findOne(query);
       res.send(isAlreadyEnrolled);
@@ -255,7 +262,6 @@ async function run() {
     // check if the teacher already request or already a teacher
     app.get("/teacher/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
-      console.log(email);
       const query = { email };
       const result = await teachersCollection.findOne(query);
       res.send(result);
@@ -291,12 +297,10 @@ async function run() {
           query,
           updatedDoc1
         );
-        console.log(updateTeacherCollection);
         const updateUserCollection = await usersCollection.updateOne(
           query,
           updatedDoc2
         );
-        console.log(updateUserCollection);
         res.send("updated");
       }
     );
@@ -369,7 +373,6 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const data = req.body;
-      console.log(data);
       const updatedDoc = {
         $set: {
           title: data.title,
@@ -381,7 +384,6 @@ async function run() {
       };
       const result = await classCollection.updateOne(query, updatedDoc);
       res.send(result);
-      console.log(result);
     });
     //create assignment
     app.post("/assignments", verifyToken, verifyTeacher, async (req, res) => {
@@ -460,7 +462,6 @@ async function run() {
     // get my ordered list of students
     app.get("/myorders/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
-      console.log(email);
       const query = { studentEmail: email };
       const result = await enrolledClassesCollection.find(query).toArray();
       res.send(result);
@@ -477,7 +478,6 @@ async function run() {
         totalEnrollment,
         totalUser,
       };
-      console.log(data);
       res.send(data);
     });
   } finally {
