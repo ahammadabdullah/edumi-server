@@ -12,8 +12,8 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://edumi-blush.vercel.app",
-      "edumi-ir9jix31f-ahammad-abdullahs-projects.vercel.app",
+      "https://edumi-453a2.web.app",
+      "https://edumi-453a2.firebaseapp.com/",
     ],
     credentials: true,
   })
