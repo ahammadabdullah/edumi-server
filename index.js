@@ -6,13 +6,15 @@ const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const port = process.env.PORT || 3500;
 const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
-// const stripe = require("stripe")(
-//   `Authorization: Bearer ${process.env.PAYMENT_SECRET_KEY}`
-// );
+
 const app = express();
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: [
+      "http://localhost:5173",
+      "https://edumi-blush.vercel.app",
+      "edumi-ir9jix31f-ahammad-abdullahs-projects.vercel.app",
+    ],
     credentials: true,
   })
 );
